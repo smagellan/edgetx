@@ -55,6 +55,20 @@ coord_t getAverage<4>(const uint8_t* value)
   return sum / 4;
 }
 
+
+//TODO
+template <uint8_t CNT>
+coord_t avg(const uint8_t* value, size_t n, size_t avg_n_elements, uint16_t* avg)
+{
+  uint16_t sum = 0;
+  for (uint8_t i = 0; i < CNT; i++) {
+    sum += value[i];
+  }
+  if (SPECTRUM_HEIGHT > 300) sum = sum * 2;
+  return sum / CNT;
+}
+
+
 class SpectrumFooterWindow : public Window
 {
  public:
@@ -313,7 +327,10 @@ class SpectrumWindow : public Window
     }
 
     Window::checkEvents();
+    updateFps();
+  }
 
+  void updateFps() {
     ++frameCount;
     if (frameCount > 120) {
         struct gtm now;
@@ -323,7 +340,6 @@ class SpectrumWindow : public Window
 #if defined(SIMU)
         fprintf(stderr, "frameCount: %u, start time: %u. end time: %u, diff: %u, fps: %u\n", frameCount, startSeconds, nowSeconds, nowSeconds - startSeconds, fps);
 #endif
-
         showFps(fps);
         startSeconds = nowSeconds;
         frameCount = 0;
@@ -338,10 +354,18 @@ class SpectrumWindow : public Window
  protected:
   static LAYOUT_VAL_SCALED(LINE_SPACE, 40) static LAYOUT_VAL_SCALED(WARN_YO, 20)
 
-      lv_style_t style;
-  lv_point_t maxPts[2 * LCD_W / 4];
-  lv_point_t barPts[2 * LCD_W / 4];
-  lv_point_t peakPts[2 * LCD_W / 4];
+  constexpr static size_t numBars = 2 * LCD_W / 4;
+
+  lv_style_t style;
+  lv_point_t maxPts[numBars];
+  lv_point_t barPts[numBars];
+  lv_point_t peakPts[numBars];
+
+  //TODO: try FPS with vectorized avg calculations
+  //uint16_t maxAvg[numBars];
+  //uint16_t barsAvg[numBars];
+  //uint16_t peakAvg[numBars];
+
   lv_point_t hAxisPts[2 * SPECTRUM_HEIGHT / LINE_SPACE];
   lv_point_t vAxisPts[2 * 8];
   lv_obj_t* maxLines[LCD_W / 4];
