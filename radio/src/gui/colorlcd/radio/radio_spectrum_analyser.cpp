@@ -24,6 +24,11 @@
 #include "edgetx.h"
 #include "libopenui.h"
 
+#if defined(SIMU)
+#include <iostream>
+#include <cstdio>
+#endif
+
 #define SET_DIRTY() storageDirty(EE_GENERAL)
 
 LAYOUT_VAL_SCALED(SCALE_HEIGHT, 15)
@@ -206,6 +211,15 @@ class SpectrumWindow : public Window
         this, {0, height() / 2 - WARN_YO, lv_pct(100), LV_SIZE_CONTENT},
         STR_TURN_OFF_RECEIVER, COLOR_THEME_PRIMARY1_INDEX, CENTERED | FONT(XL));
     warning->show(TELEMETRY_STREAMING());
+
+    struct gtm now;
+    gettime(&now);
+    startSeconds = gmktime(&now);
+
+    fpsTitle = new StaticText(
+        this, {0, 0, lv_pct(100), LV_SIZE_CONTENT},
+        fpsStr, COLOR_THEME_PRIMARY1_INDEX, FONT(XS));
+    showFps(0);
   }
 
   void checkEvents() override
@@ -299,6 +313,26 @@ class SpectrumWindow : public Window
     }
 
     Window::checkEvents();
+
+    ++frameCount;
+    if (frameCount > 120) {
+        struct gtm now;
+        gettime(&now);
+        gtime_t nowSeconds = gmktime(&now);
+        uint16_t fps = frameCount / (nowSeconds - startSeconds);
+#if defined(SIMU)
+        fprintf(stderr, "frameCount: %u, start time: %u. end time: %u, diff: %u, fps: %u\n", frameCount, startSeconds, nowSeconds, nowSeconds - startSeconds, fps);
+#endif
+
+        showFps(fps);
+        startSeconds = nowSeconds;
+        frameCount = 0;
+    }
+  }
+
+  void showFps(uint16_t fps) {
+    sprintf(fpsStr, "FPS: %u", fps);
+    fpsTitle->setText(fpsStr);
   }
 
  protected:
@@ -318,6 +352,10 @@ class SpectrumWindow : public Window
 
   uint32_t lastFreq = 0;
   uint32_t lastSpan = 0;
+  uint32_t frameCount = 0;
+  gtime_t startSeconds = { 0 };
+  StaticText* fpsTitle = nullptr;
+  char fpsStr[12] = {0};
 };
 
 RadioSpectrumAnalyser::RadioSpectrumAnalyser(uint8_t moduleIdx) :
